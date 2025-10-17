@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
+	"journalCli/utils"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/charmbracelet/bubbles/textarea"
@@ -106,14 +108,31 @@ func (m Model) Init() tea.Cmd {
 	return nil
 }
 
-func checkServer(userId string) tea.Msg {
-	//Create an HTTP client and make a GET request to the server
-	c := &http.Client{Timeout: 10 * time.Second}
-	url := fmt.Sprintf("%s/user?userId=%s", url, userId)
-	f, _ := os.OpenFile("debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	defer f.Close()
-	fmt.Fprintln(f, "Requesting URL:", url) // Debug print
-	res, err := c.Get(url)
+func checkServer(username, password string) tea.Msg {
+	client := &http.Client{Timeout: 10 * time.Second}
+
+	data := map[string]string{
+		"username": username,
+		"password": password,
+	}
+
+	body, err := json.Marshal(data)
+
+	if err != nil {
+		return ErrMsg{err}
+	}
+
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/login", url), bytes.NewBuffer(body))
+
+	if err != nil {
+		return ErrMsg{err}
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", " application/json")
+
+	//send the request
+	res, err := client.Do(req)
 
 	if err != nil {
 		return ErrMsg{err}
@@ -128,14 +147,19 @@ func checkServer(userId string) tea.Msg {
 	}
 
 	if res.StatusCode != http.StatusOK {
-		return ErrMsg{fmt.Errorf("server returned status code %d", res.StatusCode)}
+		return ErrMsg{fmt.Errorf("server returned status: %s, message: %s", res.Status, string(b))}
 	}
 
 	return NormalMsg{string(b)}
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+
+	var cmd tea.Cmd
+	var cmds []tea.Cmd
+
 	switch msg := msg.(type) {
+
 	case NormalMsg:
 		m.msg = msg.msg
 		// After successful login, go to menu
@@ -150,19 +174,35 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch m.page {
 		// ------------- LOGIN PAGE -------------
 		case PageLogin:
-			if m.inputing {
-				switch msg.Type {
-				case tea.KeyEnter:
-					m.inputing = false
-					return m, func() tea.Msg { return checkServer(m.userId) }
-				case tea.KeyBackspace:
-					if len(m.userId) > 0 {
-						m.userId = m.userId[:len(m.userId)-1]
-					}
-				case tea.KeyRunes:
-					m.userId += string(msg.Runes)
+			switch msg.Type {
+			case tea.KeyTab, tea.KeyDown:
+				m.Focused = (m.Focused + 1) % 2
+				if m.Focused == 0 {
+					m.username.Focus()
+					m.password.Blur()
+				} else {
+					m.password.Focus()
+					m.username.Blur()
 				}
+			case tea.KeyEnter:
+				username := m.username.Value()
+				password := m.password.Value()
+				isValid, err := utils.ValidateCredentials(username, password)
+				if !isValid {
+					m.err = err
+				} else {
+					return m, func() tea.Msg { return checkServer(username, password) }
+				}
+			case tea.KeyCtrlC:
+				return m, tea.Quit
+
 			}
+
+			m.username, cmd = m.username.Update(msg)
+			cmds = append(cmds, cmd)
+
+			m.password, cmd = m.password.Update(msg)
+			cmds = append(cmds, cmd)
 		// ------------- MENU PAGE -------------
 		case PageMenu:
 			switch msg.String() {
@@ -217,21 +257,34 @@ func (m Model) View() string {
 func renderLoginPage(m Model) string {
 	title := titleStyle.Render("🔐 Login/Signup")
 
-	userNameInputBox := inputBoxStyle.Render(m.userId + "_")
-	passwordInputBox := inputBoxStyle.Render("********")
-	button := buttonStyle.Render("Press Enter to Submit")
+	userNameStyle := inputBoxStyle
+	passwordStyle := inputBoxStyle
 
-	errMsg := ""
+	if m.Focused == 0 {
+		userNameStyle = inputBoxStyle.BorderForeground(lipgloss.Color("#FF9F1C"))
+	}
+	if m.Focused == 1 {
+		passwordStyle = inputBoxStyle.BorderForeground(lipgloss.Color("#FF9F1C"))
+	}
+
+	form := lipgloss.JoinVertical(
+		lipgloss.Left,
+		title,
+		userNameStyle.Render(m.username.View()),
+		passwordStyle.Render(m.password.View()),
+		buttonStyle.Render("Press Enter to Submit"),
+	)
+
 	if m.err != nil {
-		errMsg = errorStyle.Render(fmt.Sprintf("Error: %v", m.err))
+		form += "\n\n" + errorStyle.Render(m.err.Error())
 	}
 
 	return lipgloss.Place(
-		50,
-		10,
+		80,
+		20,
 		lipgloss.Center,
 		lipgloss.Center,
-		fmt.Sprintf("%s\n\n%s\n\n%s\n\n%s\n\n%s", title, userNameInputBox, passwordInputBox, button, errMsg),
+		form,
 	)
 }
 
