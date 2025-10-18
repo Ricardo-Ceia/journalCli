@@ -382,14 +382,24 @@ func (m Model) View() string {
 	}
 }
 
+func renderGoogleLogo() string {
+	coloredGoogleLogo := lipgloss.NewStyle().Foreground(lipgloss.Color("#4285F4")).Render("G")
+	coloredGoogleLogo += lipgloss.NewStyle().Foreground(lipgloss.Color("#DB4437")).Render("o")
+	coloredGoogleLogo += lipgloss.NewStyle().Foreground(lipgloss.Color("#F4B400")).Render("o")
+	coloredGoogleLogo += lipgloss.NewStyle().Foreground(lipgloss.Color("#4285F4")).Render("g")
+	coloredGoogleLogo += lipgloss.NewStyle().Foreground(lipgloss.Color("#0F9D58")).Render("l")
+	coloredGoogleLogo += lipgloss.NewStyle().Foreground(lipgloss.Color("#DB4437")).Render("e")
+	return coloredGoogleLogo
+}
+
 func renderLoginPage(m Model) string {
 	title := titleStyle.Render("🔐 Login")
-	baseFooter := lipgloss.NewStyle().Italic(true).Bold(true).Render("\nFirst time? ")
-	underlineFooter := lipgloss.NewStyle().Italic(true).Underline(true).Render("Press Ctrl+s to go to SignUp Page")
-
 	userNameStyle := inputBoxStyle
 	passwordStyle := inputBoxStyle
-
+	googleLoginLink := lipgloss.NewStyle().Italic(true).Underline(true).Render("Press Ctrl+g to Login with")
+	googleLogo := renderGoogleLogo()
+	baseFooter := lipgloss.NewStyle().Italic(true).Bold(true).Render("\nFirst time? ")
+	underlineFooter := lipgloss.NewStyle().Italic(true).Underline(true).Render("Press Ctrl+s to go to SignUp Page")
 	if m.Focused == 0 {
 		userNameStyle = inputBoxStyle.BorderForeground(lipgloss.Color("#FF9F1C"))
 	}
@@ -402,6 +412,7 @@ func renderLoginPage(m Model) string {
 		title,
 		userNameStyle.Render(m.username.View()),
 		passwordStyle.Render(m.password.View()),
+		googleLoginLink+" "+googleLogo,
 		buttonStyle.Render("Press Enter to Submit"),
 		baseFooter+underlineFooter,
 	)

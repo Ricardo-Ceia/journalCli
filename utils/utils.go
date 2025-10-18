@@ -1,6 +1,8 @@
 package utils
 
-import "fmt"
+import (
+	"fmt"
+)
 
 func ValidateCredentials(username, password, confirmPassword string) (bool, error) {
 	if password != confirmPassword {
