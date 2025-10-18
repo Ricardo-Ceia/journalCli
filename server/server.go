@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -9,37 +10,57 @@ import (
 type user struct {
 	name           string
 	id             int
+	password       string
 	journalEntries []string
 }
 
-var users = map[int]user{
-	1: {name: "Alice", id: 1, journalEntries: []string{"Today I learned Go.", "I love programming."}},
-	2: {name: "Bob", id: 2, journalEntries: []string{"Go is great for web servers.", "I enjoy coding challenges."}},
+type LoginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
-func handler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
+//TODO: Implement the login response structure
+/*
+type LoginRespose struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+	Token   string `json:"token"`
+}
+*/
+var users = map[int]user{
+	1: {name: "Alice", password: "test123", id: 1, journalEntries: []string{"Today I learned Go.", "I love programming."}},
+	2: {name: "Bob", password: "test123", id: 2, journalEntries: []string{"Go is great for web servers.", "I enjoy coding challenges."}},
+}
+
+func authHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	userId, err := strconv.Atoi(r.URL.Query().Get("userId"))
-	fmt.Println("userId:", userId)
+	var loginReq LoginRequest
+	err := json.NewDecoder(r.Body).Decode(&loginReq)
+
 	if err != nil {
-		http.Error(w, "Invalid userId parameter", http.StatusBadRequest)
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
 
-	if userId == 0 {
-		http.Error(w, "Missing userId parameter", http.StatusBadRequest)
-		return
-	}
+	username := loginReq.Username
+	password := loginReq.Password
 
-	fmt.Fprintln(w, users[userId].journalEntries)
+	for _, user := range users {
+		if user.name == username && user.password == password {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(strconv.Itoa(user.id)))
+			return
+		}
+	}
+	http.Error(w, "Invalid credentials", http.StatusUnauthorized)
 }
 
 func server() {
-	http.HandleFunc("/user", handler)
+	http.HandleFunc("/auth", authHandler)
 	fmt.Println("Server running on http://localhost:8080")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		fmt.Printf("Server error: %v\n", err)

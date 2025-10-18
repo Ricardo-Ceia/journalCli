@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"journalCli/utils"
+	"log"
 	"net/http"
 	"time"
 
@@ -64,6 +65,11 @@ type ErrMsg struct {
 	err error
 }
 
+type LoginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 const (
 	PageLogin = iota
 	PageMenu
@@ -111,18 +117,20 @@ func (m Model) Init() tea.Cmd {
 func checkServer(username, password string) tea.Msg {
 	client := &http.Client{Timeout: 10 * time.Second}
 
-	data := map[string]string{
-		"username": username,
-		"password": password,
+	log.Printf("DEBUG: username=%q, password=%q\n", username, password)
+
+	loginReq := LoginRequest{
+		Username: username,
+		Password: password,
 	}
 
-	body, err := json.Marshal(data)
+	body, err := json.Marshal(loginReq)
 
 	if err != nil {
 		return ErrMsg{err}
 	}
 
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/login", url), bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/auth", url), bytes.NewBuffer(body))
 
 	if err != nil {
 		return ErrMsg{err}
@@ -154,26 +162,34 @@ func checkServer(username, password string) tea.Msg {
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
 
+	// ----------- SERVER RESPONSES -----------
 	case NormalMsg:
 		m.msg = msg.msg
-		// After successful login, go to menu
 		if m.page == PageLogin {
 			m.page = PageMenu
 			m.inputing = false
 		}
+
 	case ErrMsg:
 		m.err = msg.err
 
+	// ----------- KEY EVENTS -----------
 	case tea.KeyMsg:
 		switch m.page {
-		// ------------- LOGIN PAGE -------------
+
+		// ----------- LOGIN PAGE -----------
 		case PageLogin:
+			m.username, cmd = m.username.Update(msg)
+			cmds = append(cmds, cmd)
+
+			m.password, cmd = m.password.Update(msg)
+			cmds = append(cmds, cmd)
+
 			switch msg.Type {
 			case tea.KeyTab, tea.KeyDown:
 				m.Focused = (m.Focused + 1) % 2
@@ -184,6 +200,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.password.Focus()
 					m.username.Blur()
 				}
+
 			case tea.KeyEnter:
 				username := m.username.Value()
 				password := m.password.Value()
@@ -191,19 +208,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if !isValid {
 					m.err = err
 				} else {
-					return m, func() tea.Msg { return checkServer(username, password) }
+					u, p := username, password
+					return m, func() tea.Msg { return checkServer(u, p) }
 				}
+
 			case tea.KeyCtrlC:
 				return m, tea.Quit
-
 			}
 
-			m.username, cmd = m.username.Update(msg)
-			cmds = append(cmds, cmd)
+			return m, tea.Batch(cmds...)
 
-			m.password, cmd = m.password.Update(msg)
-			cmds = append(cmds, cmd)
-		// ------------- MENU PAGE -------------
+		// ----------- MENU PAGE -----------
 		case PageMenu:
 			switch msg.String() {
 			case "1":
@@ -218,19 +233,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			}
 
-		// ------------- FEATURE A PAGE -------------
+		// ----------- JOURNAL PAGE -----------
 		case PageJournal:
 			if msg.String() == "b" {
 				m.page = PageMenu
 			}
 
-		// ------------- FEATURE B PAGE -------------
+		// ----------- READ PAGE -----------
 		case PageRead:
 			if msg.String() == "b" {
 				m.page = PageMenu
 			}
 		}
 	}
+
 	return m, nil
 }
 
