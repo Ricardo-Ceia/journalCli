@@ -244,6 +244,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if msg.String() == "b" {
 				m.page = PageMenu
 			}
+
+		case PageSettings:
+			if msg.String() == "b" {
+				m.page = PageMenu
+			}
+
+		case PageHelp:
+			if msg.String() == "b" {
+				m.page = PageMenu
+			}
 		}
 	}
 
