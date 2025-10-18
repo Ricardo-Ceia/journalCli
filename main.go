@@ -74,20 +74,13 @@ type LoginRequest struct {
 
 const (
 	PageLogin = iota
+	PageSignup
 	PageMenu
 	PageJournal
 	PageRead
 	PageSettings
 	PageHelp
 )
-
-var style = lipgloss.NewStyle().
-	Bold(true).
-	Foreground(lipgloss.Color("#FAFAFA")).
-	Background(lipgloss.Color("#7D56F4")).
-	PaddingTop(2).
-	PaddingLeft(4).
-	Width(22)
 
 func initialModel() Model {
 	username := textinput.New()
@@ -285,6 +278,8 @@ func (m Model) View() string {
 
 func renderLoginPage(m Model) string {
 	title := titleStyle.Render("🔐 Login/Signup")
+	baseFooter := lipgloss.NewStyle().Italic(true).Bold(true).Render("\nFirst time? ")
+	underlineFooter := lipgloss.NewStyle().Italic(true).Underline(true).Render("Press's' to go to Signup Page")
 
 	userNameStyle := inputBoxStyle
 	passwordStyle := inputBoxStyle
@@ -302,6 +297,7 @@ func renderLoginPage(m Model) string {
 		userNameStyle.Render(m.username.View()),
 		passwordStyle.Render(m.password.View()),
 		buttonStyle.Render("Press Enter to Submit"),
+		baseFooter+underlineFooter,
 	)
 
 	if m.err != nil {
