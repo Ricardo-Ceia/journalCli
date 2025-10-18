@@ -230,15 +230,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd)
 
 			switch msg.Type {
-			case tea.KeyRunes:
-				if msg.String() == "s" || msg.String() == "S" {
-					m.page = PageSignup
-					m.Focused = 0
-					m.username.SetValue("")
-					m.password.SetValue("")
-					m.username.Focus()
-					m.password.Blur()
-				}
+			case tea.KeyCtrlS:
+				m.page = PageSignup
+				m.Focused = 0
+				m.username.SetValue("")
+				m.password.SetValue("")
+				m.username.Focus()
+				m.password.Blur()
 			case tea.KeyTab, tea.KeyDown, tea.KeyUp:
 				m.Focused = (m.Focused + 1) % 2
 				if m.Focused == 0 {
@@ -269,17 +267,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd)
 
 			switch msg.Type {
-			case tea.KeyRunes:
-				if msg.String() == "l" || msg.String() == "L" {
-					m.page = PageLogin
-					m.Focused = 0
-					m.username.SetValue("")
-					m.password.SetValue("")
-					m.confirmPassword.SetValue("")
-					m.username.Focus()
-					m.password.Blur()
-					m.confirmPassword.Blur()
-				}
+			case tea.KeyCtrlL:
+				m.page = PageLogin
+				m.Focused = 0
+				m.username.SetValue("")
+				m.password.SetValue("")
+				m.confirmPassword.SetValue("")
+				m.username.Focus()
+				m.password.Blur()
+				m.confirmPassword.Blur()
 
 			case tea.KeyTab, tea.KeyDown, tea.KeyUp:
 				m.Focused = (m.Focused + 1) % 3
@@ -383,7 +379,7 @@ func (m Model) View() string {
 func renderLoginPage(m Model) string {
 	title := titleStyle.Render("🔐 Login")
 	baseFooter := lipgloss.NewStyle().Italic(true).Bold(true).Render("\nFirst time? ")
-	underlineFooter := lipgloss.NewStyle().Italic(true).Underline(true).Render("Press's' to go to SignUp Page")
+	underlineFooter := lipgloss.NewStyle().Italic(true).Underline(true).Render("Press Ctrl+s to go to SignUp Page")
 
 	userNameStyle := inputBoxStyle
 	passwordStyle := inputBoxStyle
@@ -396,7 +392,7 @@ func renderLoginPage(m Model) string {
 	}
 
 	form := lipgloss.JoinVertical(
-		lipgloss.Left,
+		lipgloss.Center,
 		title,
 		userNameStyle.Render(m.username.View()),
 		passwordStyle.Render(m.password.View()),
@@ -424,7 +420,7 @@ func renderLoginPage(m Model) string {
 func renderSignupPage(m Model) string {
 	title := titleStyle.Render("🔐 SignUp")
 	baseFooter := lipgloss.NewStyle().Italic(true).Bold(true).Render("\nAlready have an account? ")
-	underlineFooter := lipgloss.NewStyle().Italic(true).Underline(true).Render("Press'l' to go to Login Page")
+	underlineFooter := lipgloss.NewStyle().Italic(true).Underline(true).Render("Press Ctrl+l to go to Login Page")
 
 	userNameStyle := inputBoxStyle
 	passwordStyle := inputBoxStyle
@@ -441,7 +437,7 @@ func renderSignupPage(m Model) string {
 	}
 
 	form := lipgloss.JoinVertical(
-		lipgloss.Left,
+		lipgloss.Center,
 		title,
 		userNameStyle.Render(m.username.View()),
 		passwordStyle.Render(m.password.View()),
