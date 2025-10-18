@@ -101,12 +101,20 @@ func initialModel() Model {
 	password.CharLimit = 32
 	password.Width = 30
 
+	confirmPassword := textinput.New()
+	confirmPassword.Placeholder = "Confirm Password"
+	confirmPassword.EchoMode = textinput.EchoPassword
+	confirmPassword.EchoCharacter = '•'
+	confirmPassword.CharLimit = 32
+	confirmPassword.Width = 30
+
 	return Model{
-		page:        PageLogin,
-		senderStyle: lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FAFAFA")),
-		username:    username,
-		password:    password,
-		inputing:    true,
+		page:            PageLogin,
+		senderStyle:     lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FAFAFA")),
+		username:        username,
+		password:        password,
+		confirmPassword: confirmPassword,
+		inputing:        true,
 		Client: &http.Client{
 			Timeout: time.Second * 10,
 		},
@@ -279,22 +287,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			case tea.KeyTab, tea.KeyDown, tea.KeyUp:
 				m.Focused = (m.Focused + 1) % 3
-				if m.Focused == 0 {
+				switch m.Focused {
+				case 0:
 					m.username.Focus()
 					m.password.Blur()
 					m.confirmPassword.Blur()
-				}
-				if m.Focused == 1 {
+				case 1:
 					m.password.Focus()
 					m.username.Blur()
 					m.confirmPassword.Blur()
-				}
-				if m.Focused == 2 {
+				case 2:
 					m.confirmPassword.Focus()
 					m.username.Blur()
 					m.password.Blur()
 				}
-
 			case tea.KeyEnter:
 				username := m.username.Value()
 				password := m.password.Value()

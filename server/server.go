@@ -19,6 +19,11 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
+type SignupRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 //TODO: Implement the login response structure
 /*
 type LoginRespose struct {
@@ -27,12 +32,21 @@ type LoginRespose struct {
 	Token   string `json:"token"`
 }
 */
+
+//TODO: Implement the signup response structure
+/*
+type SignupResponse struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+	UserID  int    `json:"user_id"`
+}
+*/
 var users = map[int]user{
 	1: {name: "Alice", password: "test123", id: 1, journalEntries: []string{"Today I learned Go.", "I love programming."}},
 	2: {name: "Bob", password: "test123", id: 2, journalEntries: []string{"Go is great for web servers.", "I enjoy coding challenges."}},
 }
 
-func authHandler(w http.ResponseWriter, r *http.Request) {
+func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -59,8 +73,33 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Invalid credentials", http.StatusUnauthorized)
 }
 
+func SignUpHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var signupReq SignupRequest
+
+	err := json.NewDecoder(r.Body).Decode(&signupReq)
+
+	if err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+	username := signupReq.Username
+	password := signupReq.Password
+
+	newID := len(users) + 1
+	users[newID] = user{name: username, password: password, id: newID, journalEntries: []string{}}
+
+	w.WriteHeader(http.StatusCreated)
+	w.Write([]byte(strconv.Itoa(newID)))
+}
+
 func server() {
-	http.HandleFunc("/auth", authHandler)
+	http.HandleFunc("/signup", SignUpHandler)
+	http.HandleFunc("/login", LoginHandler)
 	fmt.Println("Server running on http://localhost:8080")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		fmt.Printf("Server error: %v\n", err)
