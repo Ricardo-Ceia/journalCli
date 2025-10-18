@@ -54,6 +54,8 @@ type Model struct {
 	password        textinput.Model
 	confirmPassword textinput.Model
 	Focused         int
+	width           int
+	height          int
 	senderStyle     lipgloss.Style
 }
 
@@ -166,7 +168,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
-
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
 	// ----------- SERVER RESPONSES -----------
 	case NormalMsg:
 		m.msg = msg.msg
@@ -277,7 +281,6 @@ func (m Model) View() string {
 	default:
 		return "Unknown Page"
 	}
-	return ""
 }
 
 func renderLoginPage(m Model) string {
@@ -302,12 +305,16 @@ func renderLoginPage(m Model) string {
 	)
 
 	if m.err != nil {
-		form += "\n\n" + errorStyle.Render(m.err.Error())
+		form = lipgloss.JoinVertical(
+			lipgloss.Center,
+			form,
+			errorStyle.Render(fmt.Sprintf("Error: %v", m.err)),
+		)
 	}
 
 	return lipgloss.Place(
-		80,
-		20,
+		m.width,
+		m.height,
 		lipgloss.Center,
 		lipgloss.Center,
 		form,
