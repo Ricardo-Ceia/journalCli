@@ -436,6 +436,8 @@ func renderLoginPage(m Model) string {
 
 func renderSignupPage(m Model) string {
 	title := titleStyle.Render("🔐 SignUp")
+	googleSignupLink := lipgloss.NewStyle().Italic(true).Underline(true).Render("Press Ctrl+g to SignUp with Google")
+	googleLogo := renderGoogleLogo()
 	baseFooter := lipgloss.NewStyle().Italic(true).Bold(true).Render("\nAlready have an account? ")
 	underlineFooter := lipgloss.NewStyle().Italic(true).Underline(true).Render("Press Ctrl+l to go to Login Page")
 
@@ -459,6 +461,7 @@ func renderSignupPage(m Model) string {
 		userNameStyle.Render(m.username.View()),
 		passwordStyle.Render(m.password.View()),
 		confirmPasswordStyle.Render(m.confirmPassword.View()),
+		googleSignupLink+" "+googleLogo,
 		buttonStyle.Render("Press Enter to Submit"),
 		baseFooter+underlineFooter,
 	)
