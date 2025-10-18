@@ -191,7 +191,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, cmd)
 
 			switch msg.Type {
-			case tea.KeyTab, tea.KeyDown:
+			case tea.KeyTab, tea.KeyDown, tea.KeyUp:
 				m.Focused = (m.Focused + 1) % 2
 				if m.Focused == 0 {
 					m.username.Focus()
