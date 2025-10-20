@@ -47,6 +47,7 @@ type Model struct {
 	msg             string
 	err             error
 	userId          string
+	userName        string
 	inputing        bool
 	textarea        textarea.Model
 	username        textinput.Model
@@ -109,9 +110,9 @@ func initialModel() Model {
 	confirmPassword.Width = 30
 
 	return Model{
-		page:            PageLogin,
+		page:            PageMenu,
 		senderStyle:     lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FAFAFA")),
-		username:        username,
+		userName:        "Margarida",
 		password:        password,
 		confirmPassword: confirmPassword,
 		inputing:        true,
@@ -368,7 +369,7 @@ func (m Model) View() string {
 	case PageSignup:
 		return renderSignupPage(m)
 	case PageMenu:
-		return "Menu Page\n\n1. Journal\n2. Read\n3. Settings\n4. Help\nq. Quit"
+		return renderWelcomeMsg(m) + "Menu Page\n\n1. Journal\n2. Read\n3. Settings\n4. Help\nq. Quit"
 	case PageJournal:
 		return "Journal Page\n\n[Journal Entries Here]\nb. Back to Menu"
 	case PageRead:
@@ -479,6 +480,21 @@ func renderSignupPage(m Model) string {
 		lipgloss.Center,
 		form,
 	)
+}
+
+func renderWelcomeMsg(m Model) string {
+
+	style := lipgloss.NewStyle().Foreground(lipgloss.Color("#8C92AC")).PaddingTop(1).PaddingBottom(2)
+	welcomeMsg := style.Render(fmt.Sprintf("Welcome, %s", m.userName))
+
+	centeredWelcomeMsg := lipgloss.Place(
+		m.width,
+		1,
+		lipgloss.Center,
+		lipgloss.Center,
+		welcomeMsg,
+	)
+	return centeredWelcomeMsg
 }
 
 func main() {
