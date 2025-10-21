@@ -240,6 +240,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if err != nil {
 			m.err = err
 		}
+		utils.DebugLog.Printf("User created: %v", user)
 		m.userName = user.Name
 		m.page = PageMenu
 		m.inputing = false
@@ -520,6 +521,7 @@ func renderWelcomeMsg(m Model) string {
 }
 
 func main() {
+	utils.InitDebugFile()
 	p := tea.NewProgram(initialModel())
 	if err := p.Start(); err != nil {
 		fmt.Printf("Error starting program: %v\n", err)
