@@ -4,15 +4,15 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
-	"journalCli/utils"
-	"net/http"
-	"time"
-
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"io"
+	"journalCli/db"
+	"journalCli/utils"
+	"net/http"
+	"time"
 )
 
 var url string = "http://localhost:8080"
@@ -60,8 +60,12 @@ type Model struct {
 	Client          *http.Client
 }
 
-type NormalMsg struct {
-	msg string
+type LoginSuccessMsg struct {
+	UserId string
+}
+
+type SignupSuccessMsg struct {
+	UserId string
 }
 
 type ErrMsg struct {
@@ -110,9 +114,9 @@ func initialModel() Model {
 	confirmPassword.Width = 30
 
 	return Model{
-		page:            PageMenu,
+		page:            PageLogin,
 		senderStyle:     lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FAFAFA")),
-		userName:        "Margarida",
+		username:        username,
 		password:        password,
 		confirmPassword: confirmPassword,
 		inputing:        true,
@@ -166,7 +170,7 @@ func checkServerLogin(username, password string, client *http.Client) tea.Msg {
 		return ErrMsg{fmt.Errorf("server returned status: %s, message: %s", res.Status, string(b))}
 	}
 
-	return NormalMsg{string(b)}
+	return LoginSuccessMsg{UserId: string(b)}
 }
 
 func checkServerSignup(username, password string, client *http.Client) tea.Msg {
@@ -203,7 +207,8 @@ func checkServerSignup(username, password string, client *http.Client) tea.Msg {
 	if res.StatusCode != http.StatusOK {
 		return ErrMsg{fmt.Errorf("server returned status: %s, message: %s", res.Status, string(b))}
 	}
-	return NormalMsg{string(b)}
+
+	return SignupSuccessMsg{UserId: string(b)}
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -217,12 +222,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 
 	// ----------- SERVER RESPONSES -----------
-	case NormalMsg:
-		m.msg = msg.msg
-		if m.page == PageLogin {
-			m.page = PageMenu
-			m.inputing = false
+	case LoginSuccessMsg:
+		m.userId = msg.UserId
+		fmt.Sprintf("Userid: %s", m.userId)
+		user, err := db.GetUserByID(m.userId)
+		if err != nil {
+			m.err = err
 		}
+		m.userName = user.Name
+		m.page = PageMenu
+		m.inputing = false
+		m.err = nil
+
+	case SignupSuccessMsg:
+		m.userId = msg.UserId
+		m.page = PageMenu
+		m.inputing = false
+		m.err = nil
 
 	case ErrMsg:
 		m.err = msg.err
@@ -281,6 +297,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.Focused = 0
 				m.username.SetValue("")
 				m.password.SetValue("")
+
 				m.confirmPassword.SetValue("")
 				m.username.Focus()
 				m.password.Blur()

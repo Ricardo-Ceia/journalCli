@@ -6,16 +6,16 @@ import (
 	"strconv"
 )
 
-var users = map[int]user{
-	1: {name: "Alice", password: "test123", id: 1, journalEntries: []string{"Today I learned Go.", "I love programming."}},
-	2: {name: "Bob", password: "test123", id: 2, journalEntries: []string{"Go is great for web servers.", "I enjoy coding challenges."}},
+var Users = map[int]User{
+	1: {Name: "Alice", Password: "test123", Id: "1", JournalEntries: []string{"Today I learned Go.", "I love programming."}},
+	2: {Name: "Bob", Password: "test123", Id: "2", JournalEntries: []string{"Go is great for web servers.", "I enjoy coding challenges."}},
 }
 
-type user struct {
-	name           string
-	id             int
-	password       string
-	journalEntries []string
+type User struct {
+	Name           string
+	Id             string
+	Password       string
+	JournalEntries []string
 }
 
 type LoginRequest struct {
@@ -45,10 +45,10 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	username := loginReq.Username
 	password := loginReq.Password
 
-	for _, user := range users {
-		if user.name == username && user.password == password {
+	for _, user := range Users {
+		if user.Name == username && user.Password == password {
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(strconv.Itoa(user.id)))
+			w.Write([]byte(user.Id))
 			return
 		}
 	}
@@ -72,9 +72,9 @@ func SignUpHandler(w http.ResponseWriter, r *http.Request) {
 	username := signupReq.Username
 	password := signupReq.Password
 
-	newID := len(users) + 1
-	users[newID] = user{name: username, password: password, id: newID, journalEntries: []string{}}
+	newID := strconv.Itoa(len(Users) + 1)
+	Users[(len(Users) + 1)] = User{Name: username, Password: password, Id: newID, JournalEntries: []string{}}
 
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(strconv.Itoa(newID)))
+	w.Write([]byte(newID))
 }
