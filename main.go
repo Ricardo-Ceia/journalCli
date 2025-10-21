@@ -4,15 +4,16 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/charmbracelet/bubbles/textarea"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"io"
 	"journalCli/db"
 	"journalCli/utils"
 	"net/http"
 	"time"
+
+	"github.com/charmbracelet/bubbles/textarea"
+	"github.com/charmbracelet/bubbles/textinput"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 var url string = "http://localhost:8080"
@@ -142,7 +143,7 @@ func checkServerLogin(username, password string, client *http.Client) tea.Msg {
 		return ErrMsg{err}
 	}
 
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/auth", url), bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/login", url), bytes.NewBuffer(body))
 
 	if err != nil {
 		return ErrMsg{err}
@@ -204,7 +205,7 @@ func checkServerSignup(username, password string, client *http.Client) tea.Msg {
 		return ErrMsg{err}
 	}
 
-	if res.StatusCode != http.StatusOK {
+	if res.StatusCode != http.StatusCreated {
 		return ErrMsg{fmt.Errorf("server returned status: %s, message: %s", res.Status, string(b))}
 	}
 
@@ -224,7 +225,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// ----------- SERVER RESPONSES -----------
 	case LoginSuccessMsg:
 		m.userId = msg.UserId
-		fmt.Sprintf("Userid: %s", m.userId)
 		user, err := db.GetUserByID(m.userId)
 		if err != nil {
 			m.err = err
@@ -236,6 +236,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case SignupSuccessMsg:
 		m.userId = msg.UserId
+		user, err := db.GetUserByID(m.userId)
+		if err != nil {
+			m.err = err
+		}
+		m.userName = user.Name
 		m.page = PageMenu
 		m.inputing = false
 		m.err = nil
