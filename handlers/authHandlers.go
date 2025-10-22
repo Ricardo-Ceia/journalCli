@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 )
@@ -71,10 +72,10 @@ func SignUpHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	username := signupReq.Username
 	password := signupReq.Password
-
+	fmt.Printf("New User username %s", username)
 	newID := strconv.Itoa(len(Users) + 1)
 	Users[(len(Users) + 1)] = User{Name: username, Password: password, Id: newID, JournalEntries: []string{}}
-
+	fmt.Printf("Last inserted user:%v", Users[(len(Users))])
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(newID))
 }

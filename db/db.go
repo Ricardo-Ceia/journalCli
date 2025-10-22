@@ -5,10 +5,8 @@ import (
 	"journalCli/handlers"
 )
 
-var users = handlers.Users
-
 func GetUserByID(id string) (handlers.User, error) {
-	for _, user := range users {
+	for _, user := range handlers.Users {
 		if user.Id == id {
 			return user, nil
 		}

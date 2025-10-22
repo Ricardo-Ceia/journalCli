@@ -2,8 +2,6 @@ package utils
 
 import (
 	"fmt"
-	"log"
-	"os"
 )
 
 func ValidateCredentials(username, password, confirmPassword string) (bool, error) {
@@ -20,17 +18,4 @@ func ValidateCredentials(username, password, confirmPassword string) (bool, erro
 	}
 
 	return true, nil
-}
-
-var DebugLog *log.Logger
-
-func InitDebugFile() {
-	f, err := os.OpenFile("debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		log.Fatal("Error creating debug file:", err)
-		return
-	}
-	defer f.Close()
-
-	DebugLog = log.New(f, "DEBUG: ", log.Ldate|log.Ltime|log.Lshortfile)
 }

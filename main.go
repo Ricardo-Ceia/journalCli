@@ -7,7 +7,9 @@ import (
 	"io"
 	"journalCli/db"
 	"journalCli/utils"
+	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/charmbracelet/bubbles/textarea"
@@ -180,7 +182,6 @@ func checkServerSignup(username, password string, client *http.Client) tea.Msg {
 		Password: password,
 	}
 	body, err := json.Marshal(signupReq)
-
 	if err != nil {
 		return ErrMsg{err}
 	}
@@ -208,7 +209,6 @@ func checkServerSignup(username, password string, client *http.Client) tea.Msg {
 	if res.StatusCode != http.StatusCreated {
 		return ErrMsg{fmt.Errorf("server returned status: %s, message: %s", res.Status, string(b))}
 	}
-
 	return SignupSuccessMsg{UserId: string(b)}
 }
 
@@ -226,25 +226,27 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case LoginSuccessMsg:
 		m.userId = msg.UserId
 		user, err := db.GetUserByID(m.userId)
+		debugFile.WriteString(fmt.Sprintf("user: %v and error: %v", user, err))
 		if err != nil {
+			log.Printf("Failed to get user: %v", err)
 			m.err = err
 		}
 		m.userName = user.Name
 		m.page = PageMenu
 		m.inputing = false
-		m.err = nil
 
 	case SignupSuccessMsg:
 		m.userId = msg.UserId
+		debugFile.WriteString(fmt.Sprintf("User id:%s\n", m.userId))
 		user, err := db.GetUserByID(m.userId)
+		debugFile.WriteString(fmt.Sprintf("user: %v and error: %v", user, err))
 		if err != nil {
+			log.Printf("Failed to get user: %v", err)
 			m.err = err
 		}
-		utils.DebugLog.Printf("User created: %v", user)
 		m.userName = user.Name
 		m.page = PageMenu
 		m.inputing = false
-		m.err = nil
 
 	case ErrMsg:
 		m.err = msg.err
@@ -520,8 +522,17 @@ func renderWelcomeMsg(m Model) string {
 	return centeredWelcomeMsg
 }
 
+var debugFile *os.File
+
 func main() {
-	utils.InitDebugFile()
+	f, err := os.OpenFile("debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Printf("Error opening file: %v\n", err)
+		return
+	}
+	debugFile = f
+	defer f.Close()
+
 	p := tea.NewProgram(initialModel())
 	if err := p.Start(); err != nil {
 		fmt.Printf("Error starting program: %v\n", err)
