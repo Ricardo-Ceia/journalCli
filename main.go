@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/charmbracelet/bubbles/textarea"
@@ -216,6 +217,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
+	database := db.GetDB()
+
 	switch msg := msg.(type) {
 
 	case tea.WindowSizeMsg:
@@ -225,26 +228,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// ----------- SERVER RESPONSES -----------
 	case LoginSuccessMsg:
 		m.userId = msg.UserId
-		user, err := db.GetUserByID(m.userId)
-		debugFile.WriteString(fmt.Sprintf("user: %v and error: %v", user, err))
+		user, err := db.GetUserByID(database, m.userId)
 		if err != nil {
 			log.Printf("Failed to get user: %v", err)
 			m.err = err
 		}
-		m.userName = user.Name
+		m.userName = user.Username
 		m.page = PageMenu
 		m.inputing = false
 
 	case SignupSuccessMsg:
 		m.userId = msg.UserId
-		debugFile.WriteString(fmt.Sprintf("User id:%s\n", m.userId))
-		user, err := db.GetUserByID(m.userId)
-		debugFile.WriteString(fmt.Sprintf("user: %v and error: %v", user, err))
+		user, err := db.GetUserByID(database, m.userId)
 		if err != nil {
 			log.Printf("Failed to get user: %v", err)
 			m.err = err
 		}
-		m.userName = user.Name
+		m.userName = user.Username
 		m.page = PageMenu
 		m.inputing = false
 
@@ -532,6 +532,18 @@ func main() {
 	}
 	debugFile = f
 	defer f.Close()
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	dbPath := filepath.Join(configDir, "journalCli", "journal.db")
+
+	os.Mkdir(filepath.Dir(dbPath), 0755)
+
+	database := db.InitDB(dbPath)
+
+	defer db.CloseDB(database)
 
 	p := tea.NewProgram(initialModel())
 	if err := p.Start(); err != nil {

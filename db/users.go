@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"strconv"
 )
 
 type User struct {
@@ -11,12 +12,17 @@ type User struct {
 	Password_hash string `json:"password_hash"`
 }
 
-func CreateUser(db *sql.DB, username, email, password_hash string) (int64, error) {
+func CreateUser(db *sql.DB, username, email, password_hash string) (string, error) {
 	res, err := db.Exec(`Insert Into users (username,email,password_hash)`, username, email, password_hash)
 	if err != nil {
-		return 0, err
+		return "", err
 	}
-	return res.LastInsertId()
+
+	intID, err := res.LastInsertId()
+	if err != nil {
+		return "", err
+	}
+	return strconv.FormatInt(intID, 10), nil
 }
 
 func GetUserByEmail(db *sql.DB, email string) (*User, error) {
@@ -28,11 +34,11 @@ func GetUserByEmail(db *sql.DB, email string) (*User, error) {
 	return &user, nil
 }
 
-func GetUserByID(db *sql.DB, id int64) (string, string, error) {
+func GetUserByID(db *sql.DB, id string) (*User, error) {
+	var user User
 	row := db.QueryRow(`SELECT username, email FROM users WHERE id = ?`, id)
-	var username, email string
-	if err := row.Scan(&username, &email); err != nil {
-		return "", "", err
+	if err := row.Scan(&user.Username, &user.Email); err != nil {
+		return nil, err
 	}
-	return username, email, nil
+	return &user, nil
 }
