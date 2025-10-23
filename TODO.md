@@ -1,3 +1,3 @@
-#TODO: Check why when the user is created, the user's properties are not being set correctly.
-#Connect an external database so the server and the client can have a shared memory access.
+#TODO: Create the sqlite real database
+#TODO: Change the auth request function (login and signup) to use the new db functions
 #TODO : Refactor the code.

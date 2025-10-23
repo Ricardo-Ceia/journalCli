@@ -2,6 +2,8 @@ package utils
 
 import (
 	"fmt"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 func ValidateCredentials(username, password, confirmPassword string) (bool, error) {
@@ -18,4 +20,9 @@ func ValidateCredentials(username, password, confirmPassword string) (bool, erro
 	}
 
 	return true, nil
+}
+
+func HashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	return string(bytes), err
 }

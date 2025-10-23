@@ -2,34 +2,27 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
+	"journalCli/db"
+	"journalCli/utils"
 	"net/http"
-	"strconv"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
-var Users = map[int]User{
-	1: {Name: "Alice", Password: "test123", Id: "1", JournalEntries: []string{"Today I learned Go.", "I love programming."}},
-	2: {Name: "Bob", Password: "test123", Id: "2", JournalEntries: []string{"Go is great for web servers.", "I enjoy coding challenges."}},
-}
-
-type User struct {
-	Name           string
-	Id             string
-	Password       string
-	JournalEntries []string
-}
-
 type LoginRequest struct {
-	Username string `json:"username"`
+	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
 type SignupRequest struct {
 	Username string `json:"username"`
+	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
+	database := db.GetDB()
+
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -43,20 +36,32 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	username := loginReq.Username
+	email := loginReq.Email
 	password := loginReq.Password
 
-	for _, user := range Users {
-		if user.Name == username && user.Password == password {
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(user.Id))
-			return
-		}
+	user, err := db.GetUserByEmail(database, email)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
 	}
-	http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password_hash), []byte(password)); err != nil {
+		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		return
+	}
+
+	user.Password_hash = ""
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(user)
 }
 
 func SignUpHandler(w http.ResponseWriter, r *http.Request) {
+
+	database := db.GetDB()
+
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -71,11 +76,24 @@ func SignUpHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	username := signupReq.Username
+	email := signupReq.Email
 	password := signupReq.Password
-	fmt.Printf("New User username %s", username)
-	newID := strconv.Itoa(len(Users) + 1)
-	Users[(len(Users) + 1)] = User{Name: username, Password: password, Id: newID, JournalEntries: []string{}}
-	fmt.Printf("Last inserted user:%v", Users[(len(Users))])
+
+	hashPassword, err := utils.HashPassword(password)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	user, err := db.CreateUser(database, username, email, hashPassword)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(newID))
+	json.NewEncoder(w).Encode(user)
 }

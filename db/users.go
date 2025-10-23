@@ -12,17 +12,24 @@ type User struct {
 	Password_hash string `json:"password_hash"`
 }
 
-func CreateUser(db *sql.DB, username, email, password_hash string) (string, error) {
+func CreateUser(db *sql.DB, username, email, password_hash string) (*User, error) {
 	res, err := db.Exec(`Insert Into users (username,email,password_hash)`, username, email, password_hash)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	intID, err := res.LastInsertId()
+
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return strconv.FormatInt(intID, 10), nil
+
+	return &User{
+		ID:            strconv.FormatInt(intID, 10),
+		Email:         email,
+		Username:      username,
+		Password_hash: password_hash,
+	}, nil
 }
 
 func GetUserByEmail(db *sql.DB, email string) (*User, error) {
