@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"log"
 	"sync"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 var (

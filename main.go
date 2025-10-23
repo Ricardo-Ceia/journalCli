@@ -49,13 +49,13 @@ type Page int
 type Model struct {
 	page            Page
 	msg             string
+	user            User
 	err             error
-	userId          string
-	userName        string
 	inputing        bool
 	textarea        textarea.Model
 	username        textinput.Model
 	password        textinput.Model
+	email           textinput.Model
 	confirmPassword textinput.Model
 	Focused         int
 	width           int
@@ -64,12 +64,18 @@ type Model struct {
 	Client          *http.Client
 }
 
+type User struct {
+	Id       string `json:"id"`
+	Email    string `json:"email"`
+	Username string `json:"username"`
+}
+
 type LoginSuccessMsg struct {
-	UserId string
+	User User
 }
 
 type SignupSuccessMsg struct {
-	UserId string
+	User User
 }
 
 type ErrMsg struct {
@@ -77,12 +83,13 @@ type ErrMsg struct {
 }
 
 type LoginRequest struct {
-	Username string `json:"username"`
+	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
 type SignupRequest struct {
 	Username string `json:"username"`
+	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
@@ -103,6 +110,11 @@ func initialModel() Model {
 	username.CharLimit = 32
 	username.Width = 30
 
+	email := textinput.New()
+	email.Placeholder = "Email"
+	email.CharLimit = 32
+	email.Width = 30
+
 	password := textinput.New()
 	password.Placeholder = "Password"
 	password.EchoMode = textinput.EchoPassword
@@ -121,6 +133,7 @@ func initialModel() Model {
 		page:            PageLogin,
 		senderStyle:     lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FAFAFA")),
 		username:        username,
+		email:           email,
 		password:        password,
 		confirmPassword: confirmPassword,
 		inputing:        true,
@@ -134,9 +147,9 @@ func (m Model) Init() tea.Cmd {
 	return nil
 }
 
-func checkServerLogin(username, password string, client *http.Client) tea.Msg {
+func checkServerLogin(email, password string, client *http.Client) tea.Msg {
 	loginReq := LoginRequest{
-		Username: username,
+		Email:    email,
 		Password: password,
 	}
 
@@ -174,12 +187,18 @@ func checkServerLogin(username, password string, client *http.Client) tea.Msg {
 		return ErrMsg{fmt.Errorf("server returned status: %s, message: %s", res.Status, string(b))}
 	}
 
-	return LoginSuccessMsg{UserId: string(b)}
+	var user User
+	if err := json.NewDecoder(res.Body).Decode(&user); err != nil {
+		return ErrMsg{err}
+	}
+
+	return LoginSuccessMsg{User: user}
 }
 
-func checkServerSignup(username, password string, client *http.Client) tea.Msg {
+func checkServerSignup(username, email, password string, client *http.Client) tea.Msg {
 	signupReq := SignupRequest{
 		Username: username,
+		Email:    email,
 		Password: password,
 	}
 	body, err := json.Marshal(signupReq)
@@ -210,14 +229,44 @@ func checkServerSignup(username, password string, client *http.Client) tea.Msg {
 	if res.StatusCode != http.StatusCreated {
 		return ErrMsg{fmt.Errorf("server returned status: %s, message: %s", res.Status, string(b))}
 	}
-	return SignupSuccessMsg{UserId: string(b)}
+
+	var user User
+
+	if err := json.NewDecoder(bytes.NewBuffer(b)).Decode(&user); err != nil {
+		return ErrMsg{err}
+	}
+
+	return SignupSuccessMsg{User: user}
+}
+
+func (m *Model) updateFocusSignup() {
+	switch m.Focused {
+	case 0:
+		m.username.Focus()
+		m.email.Blur()
+		m.password.Blur()
+		m.confirmPassword.Blur()
+	case 1:
+		m.username.Blur()
+		m.email.Focus()
+		m.password.Blur()
+		m.confirmPassword.Blur()
+	case 2:
+		m.username.Blur()
+		m.email.Blur()
+		m.password.Focus()
+		m.confirmPassword.Blur()
+	case 3:
+		m.username.Blur()
+		m.email.Blur()
+		m.password.Blur()
+		m.confirmPassword.Focus()
+	}
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
-
-	database := db.GetDB()
 
 	switch msg := msg.(type) {
 
@@ -227,24 +276,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// ----------- SERVER RESPONSES -----------
 	case LoginSuccessMsg:
-		m.userId = msg.UserId
-		user, err := db.GetUserByID(database, m.userId)
-		if err != nil {
-			log.Printf("Failed to get user: %v", err)
-			m.err = err
-		}
-		m.userName = user.Username
+		m.user = msg.User
 		m.page = PageMenu
 		m.inputing = false
 
 	case SignupSuccessMsg:
-		m.userId = msg.UserId
-		user, err := db.GetUserByID(database, m.userId)
-		if err != nil {
-			log.Printf("Failed to get user: %v", err)
-			m.err = err
-		}
-		m.userName = user.Username
 		m.page = PageMenu
 		m.inputing = false
 
@@ -293,6 +329,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.username, cmd = m.username.Update(msg)
 			cmds = append(cmds, cmd)
 
+			m.email, cmd = m.email.Update(msg)
+			cmds = append(cmds, cmd)
+
 			m.password, cmd = m.password.Update(msg)
 			cmds = append(cmds, cmd)
 
@@ -311,31 +350,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.password.Blur()
 				m.confirmPassword.Blur()
 
-			case tea.KeyTab, tea.KeyDown, tea.KeyUp:
-				m.Focused = (m.Focused + 1) % 3
-				switch m.Focused {
-				case 0:
-					m.username.Focus()
-					m.password.Blur()
-					m.confirmPassword.Blur()
-				case 1:
-					m.password.Focus()
-					m.username.Blur()
-					m.confirmPassword.Blur()
-				case 2:
-					m.confirmPassword.Focus()
-					m.username.Blur()
-					m.password.Blur()
-				}
+			case tea.KeyTab, tea.KeyDown:
+				m.Focused = (m.Focused + 1) % 4
+				m.updateFocusSignup()
+			case tea.KeyUp:
+				m.Focused = (m.Focused + 3) % 4
+				m.updateFocusSignup()
 			case tea.KeyEnter:
 				username := m.username.Value()
 				password := m.password.Value()
+				email := m.email.Value()
 				confirmPassword := m.confirmPassword.Value()
 				isValid, err := utils.ValidateCredentials(username, password, confirmPassword)
 				if !isValid {
 					m.err = err
 				} else {
-					return m, func() tea.Msg { return checkServerSignup(username, password, m.Client) }
+					return m, func() tea.Msg { return checkServerSignup(username, email, password, m.Client) }
 				}
 
 			case tea.KeyCtrlC:
@@ -468,6 +498,7 @@ func renderSignupPage(m Model) string {
 	underlineFooter := lipgloss.NewStyle().Italic(true).Underline(true).Render("Press Ctrl+l to go to Login Page")
 
 	userNameStyle := inputBoxStyle
+	emailStyle := inputBoxStyle
 	passwordStyle := inputBoxStyle
 	confirmPasswordStyle := inputBoxStyle
 
@@ -475,9 +506,12 @@ func renderSignupPage(m Model) string {
 		userNameStyle = inputBoxStyle.BorderForeground(lipgloss.Color("#FF9F1C"))
 	}
 	if m.Focused == 1 {
-		passwordStyle = inputBoxStyle.BorderForeground(lipgloss.Color("#FF9F1C"))
+		emailStyle = inputBoxStyle.BorderForeground(lipgloss.Color("#FF9F1C"))
 	}
 	if m.Focused == 2 {
+		passwordStyle = inputBoxStyle.BorderForeground(lipgloss.Color("#FF9F1C"))
+	}
+	if m.Focused == 3 {
 		confirmPasswordStyle = inputBoxStyle.BorderForeground(lipgloss.Color("#FF9F1C"))
 	}
 
@@ -485,12 +519,14 @@ func renderSignupPage(m Model) string {
 		lipgloss.Center,
 		title,
 		userNameStyle.Render(m.username.View()),
+		emailStyle.Render(m.email.View()),
 		passwordStyle.Render(m.password.View()),
 		confirmPasswordStyle.Render(m.confirmPassword.View()),
 		googleSignupLink+" "+googleLogo,
 		buttonStyle.Render("Press Enter to Submit"),
 		baseFooter+underlineFooter,
 	)
+
 	if m.err != nil {
 		form = lipgloss.JoinVertical(
 			lipgloss.Center,
@@ -510,7 +546,7 @@ func renderSignupPage(m Model) string {
 func renderWelcomeMsg(m Model) string {
 
 	style := lipgloss.NewStyle().Foreground(lipgloss.Color("#8C92AC")).PaddingTop(1).PaddingBottom(2)
-	welcomeMsg := style.Render(fmt.Sprintf("Welcome, %s", m.userName))
+	welcomeMsg := style.Render(fmt.Sprintf("Welcome, %s", m.user.Username))
 
 	centeredWelcomeMsg := lipgloss.Place(
 		m.width,
