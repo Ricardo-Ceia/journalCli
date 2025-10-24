@@ -59,6 +59,7 @@ type Model struct {
 	password        textinput.Model
 	email           textinput.Model
 	confirmPassword textinput.Model
+	journal         textarea.Model
 	Focused         int
 	width           int
 	height          int
@@ -131,8 +132,20 @@ func initialModel() Model {
 	confirmPassword.CharLimit = 32
 	confirmPassword.Width = 30
 
+	journal := textarea.New()
+	journal.Placeholder = "Write your thoughts here..."
+	journal.ShowLineNumbers = true
+
+	journal.FocusedStyle = textarea.Style{
+		Base: lipgloss.NewStyle().Foreground(lipgloss.Color("#6C63FF")),
+	}
+
+	journal.BlurredStyle = textarea.Style{
+		Base: lipgloss.NewStyle().Foreground(lipgloss.Color("#E6E6E6")),
+	}
 	return Model{
 		page:            PageLogin,
+		journal:         journal,
 		senderStyle:     lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FAFAFA")),
 		username:        username,
 		email:           email,
@@ -389,9 +402,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// ----------- JOURNAL PAGE -----------
 		case PageJournal:
-			if msg.String() == "b" {
-				m.page = PageMenu
+
+			if !m.inputing {
+				m.journal.Focus()
+				m.inputing = true
 			}
+			m.journal, cmd = m.journal.Update(msg)
+			cmds = append(cmds, cmd)
+
+			switch msg.Type {
+			case tea.KeyCtrlS:
+			//TODO
+			case tea.KeyEsc:
+				m.page = PageMenu
+				m.journal.SetValue("")
+			case tea.KeyCtrlC:
+				return m, tea.Quit
+			}
+			return m, tea.Batch(cmds...)
 
 		// ----------- READ PAGE -----------
 		case PageRead:
@@ -425,7 +453,7 @@ func (m Model) View() string {
 	case PageMenu:
 		return renderWelcomeMsg(m) + "Menu Page\n\n1. Journal\n2. Read\n3. Settings\n4. Help\nq. Quit"
 	case PageJournal:
-		return "Journal Page\n\n[Journal Entries Here]\nb. Back to Menu"
+		return renderJournal(m)
 	case PageRead:
 		return "Read Page\n\n[Read Entries Here]\nb. Back to Menu"
 	case PageSettings:
@@ -557,6 +585,36 @@ func renderWelcomeMsg(m Model) string {
 		lipgloss.Center,
 		lipgloss.Center,
 		lipgloss.JoinVertical(lipgloss.Center, styledMsg, border),
+	)
+}
+
+func renderJournal(m Model) string {
+	title := titleStyle.Render("📜 " + m.user.Username)
+	instructions := lipgloss.NewStyle().Italic(true).Foreground(lipgloss.Color("#A78BFA")).Render("Ctrl+S to Save | Esc to Back | Ctrl+C to Quit")
+
+	journalBox := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("#6C63FF")).Padding(1).Render(m.journal.View())
+
+	form := lipgloss.JoinVertical(
+		lipgloss.Left,
+		title,
+		instructions,
+		journalBox,
+	)
+
+	if m.err != nil {
+		form = lipgloss.JoinVertical(
+			lipgloss.Left,
+			form,
+			errorStyle.Render(fmt.Sprintf("Error: %v", m.err)),
+		)
+	}
+
+	return lipgloss.Place(
+		m.width,
+		m.height,
+		lipgloss.Center,
+		lipgloss.Center,
+		form,
 	)
 }
 
