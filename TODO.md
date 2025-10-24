@@ -1,2 +1,2 @@
-#TODO: Create the sqlite real database
+#TODO:Create the writting panel
 #TODO : Refactor the code.

@@ -88,6 +88,8 @@ func SignUpHandler(w http.ResponseWriter, r *http.Request) {
 
 	user, err := db.CreateUser(database, username, email, hashPassword)
 
+	user.Password_hash = ""
+
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

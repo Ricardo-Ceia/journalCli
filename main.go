@@ -4,13 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"journalCli/db"
 	"journalCli/utils"
-	"log"
 	"net/http"
 	"os"
-	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/textarea"
@@ -46,16 +44,6 @@ var (
 	// Error messages
 	errorStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#EF4444")) // red
-
-	// Muted / secondary info
-	helpTextStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#94A3B8")).
-			Italic(true)
-
-	// Background & text (for future use)
-	bgStyle = lipgloss.NewStyle().
-		Background(lipgloss.Color("#0D0D1A")).
-		Foreground(lipgloss.Color("#E6E6E6"))
 )
 
 type Page int
@@ -191,14 +179,12 @@ func checkServerLogin(email, password string, client *http.Client) tea.Msg {
 
 	defer res.Body.Close()
 
-	b, err := io.ReadAll(res.Body)
-
 	if err != nil {
 		return ErrMsg{err}
 	}
 
 	if res.StatusCode != http.StatusOK {
-		return ErrMsg{fmt.Errorf("server returned status: %s, message: %s", res.Status, string(b))}
+		return ErrMsg{fmt.Errorf("server returned status: %s", res.Status)}
 	}
 
 	var user User
@@ -234,19 +220,17 @@ func checkServerSignup(username, email, password string, client *http.Client) te
 	}
 	defer res.Body.Close()
 
-	b, err := io.ReadAll(res.Body)
-
 	if err != nil {
 		return ErrMsg{err}
 	}
 
 	if res.StatusCode != http.StatusCreated {
-		return ErrMsg{fmt.Errorf("server returned status: %s, message: %s", res.Status, string(b))}
+		return ErrMsg{fmt.Errorf("server returned status: %s", res.Status)}
 	}
 
 	var user User
 
-	if err := json.NewDecoder(bytes.NewBuffer(b)).Decode(&user); err != nil {
+	if err := json.NewDecoder(res.Body).Decode(&user); err != nil {
 		return ErrMsg{err}
 	}
 
@@ -295,6 +279,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.inputing = false
 
 	case SignupSuccessMsg:
+		m.user = msg.User
 		m.page = PageMenu
 		m.inputing = false
 
@@ -553,23 +538,26 @@ func renderSignupPage(m Model) string {
 		m.height,
 		lipgloss.Center,
 		lipgloss.Center,
-		bgStyle.Render(form),
+		form,
 	)
 }
 
 func renderWelcomeMsg(m Model) string {
 
-	style := lipgloss.NewStyle().Foreground(lipgloss.Color("#5EEAD4")).PaddingTop(1).PaddingBottom(2)
-	welcomeMsg := style.Render(fmt.Sprintf("Welcome, %s", m.user.Username))
+	baseStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#E6E6E6")).PaddingTop(1).PaddingBottom(1)
+	usernameStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#6C63FF")).Bold(true)
+	welcomeMsg := fmt.Sprintf("Welcome, %s💜", usernameStyle.Render(m.user.Username))
+	styledMsg := baseStyle.Render(welcomeMsg)
 
-	centeredWelcomeMsg := lipgloss.Place(
+	border := lipgloss.NewStyle().Foreground(lipgloss.Color("#A78BFA")).Render(strings.Repeat("─", len(welcomeMsg)))
+
+	return lipgloss.Place(
 		m.width,
-		1,
+		3, // height: 2 for message + 1 for border
 		lipgloss.Center,
 		lipgloss.Center,
-		welcomeMsg,
+		lipgloss.JoinVertical(lipgloss.Center, styledMsg, border),
 	)
-	return centeredWelcomeMsg
 }
 
 var debugFile *os.File
@@ -582,16 +570,8 @@ func main() {
 	}
 	debugFile = f
 	defer f.Close()
-	configDir, err := os.UserConfigDir()
-	if err != nil {
-		log.Fatal(err)
-	}
 
-	dbPath := filepath.Join(configDir, "journalCli", "journal.db")
-
-	os.Mkdir(filepath.Dir(dbPath), 0755)
-
-	database := db.InitDB(dbPath)
+	database := db.GetDB()
 
 	defer db.CloseDB(database)
 

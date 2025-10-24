@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
 	"strconv"
 )
 
@@ -13,29 +14,26 @@ type User struct {
 }
 
 func CreateUser(db *sql.DB, username, email, password_hash string) (*User, error) {
-	res, err := db.Exec(`Insert Into users (username,email,password_hash)`, username, email, password_hash)
+	var id int
+	query := `INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id`
+	err := db.QueryRow(query, username, email, password_hash).Scan(&id)
 	if err != nil {
-		return nil, err
-	}
-
-	intID, err := res.LastInsertId()
-
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to insert user: %w", err)
 	}
 
 	return &User{
-		ID:            strconv.FormatInt(intID, 10),
+		ID:            strconv.Itoa(id),
 		Email:         email,
 		Username:      username,
-		Password_hash: password_hash,
+		Password_hash: "",
 	}, nil
 }
 
 func GetUserByEmail(db *sql.DB, email string) (*User, error) {
 	var user User
-	row := db.QueryRow(`SELECT id, email, username FROM users WHERE email = ?`, email)
-	if err := row.Scan(&user.ID, &user.Email, &user.Username); err != nil {
+	query := `SELECT id, email, username, password_hash FROM users WHERE email = $1`
+	err := db.QueryRow(query, email).Scan(&user.ID, &user.Email, &user.Username, &user.Password_hash)
+	if err != nil {
 		return nil, err
 	}
 	return &user, nil
@@ -43,8 +41,9 @@ func GetUserByEmail(db *sql.DB, email string) (*User, error) {
 
 func GetUserByID(db *sql.DB, id string) (*User, error) {
 	var user User
-	row := db.QueryRow(`SELECT username, email FROM users WHERE id = ?`, id)
-	if err := row.Scan(&user.Username, &user.Email); err != nil {
+	query := `SELECT username, email FROM users WHERE id = $1`
+	err := db.QueryRow(query, id).Scan(&user.Username, &user.Email)
+	if err != nil {
 		return nil, err
 	}
 	return &user, nil
