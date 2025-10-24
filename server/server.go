@@ -8,9 +8,7 @@ import (
 )
 
 func server() {
-	dbPath := "../journal.db"
-
-	database := db.InitDB(dbPath)
+	database := db.InitDB()
 
 	defer db.CloseDB(database)
 
