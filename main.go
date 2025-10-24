@@ -22,26 +22,40 @@ import (
 var url string = "http://localhost:8080"
 
 var (
+	// Titles and section headers
 	titleStyle = lipgloss.NewStyle().
 			Bold(true).
-			Foreground(lipgloss.Color("#7D56F4")).
+			Foreground(lipgloss.Color("#6C63FF")). // indigo
 			PaddingBottom(1)
 
+	// Input boxes
 	inputBoxStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#7D56F4")).
+			BorderForeground(lipgloss.Color("#5EEAD4")). // cyan border
 			Padding(0, 1).
 			Width(30)
 
+	// Buttons
 	buttonStyle = lipgloss.NewStyle().
 			Bold(true).
-			Foreground(lipgloss.Color("#FAFAFA")).
-			Background(lipgloss.Color("#7D56F4")).
+			Foreground(lipgloss.Color("#0D0D1A")). // dark text
+			Background(lipgloss.Color("#6C63FF")). // indigo background
 			Padding(0, 2).
 			MarginTop(1)
 
+	// Error messages
 	errorStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FF5F5F"))
+			Foreground(lipgloss.Color("#EF4444")) // red
+
+	// Muted / secondary info
+	helpTextStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#94A3B8")).
+			Italic(true)
+
+	// Background & text (for future use)
+	bgStyle = lipgloss.NewStyle().
+		Background(lipgloss.Color("#0D0D1A")).
+		Foreground(lipgloss.Color("#E6E6E6"))
 )
 
 type Page int
@@ -457,10 +471,10 @@ func renderLoginPage(m Model) string {
 	baseFooter := lipgloss.NewStyle().Italic(true).Bold(true).Render("\nFirst time? ")
 	underlineFooter := lipgloss.NewStyle().Italic(true).Underline(true).Render("Press Ctrl+s to go to SignUp Page")
 	if m.Focused == 0 {
-		userNameStyle = inputBoxStyle.BorderForeground(lipgloss.Color("#FF9F1C"))
+		userNameStyle = inputBoxStyle.BorderForeground(lipgloss.Color("#A78BFA"))
 	}
 	if m.Focused == 1 {
-		passwordStyle = inputBoxStyle.BorderForeground(lipgloss.Color("#FF9F1C"))
+		passwordStyle = inputBoxStyle.BorderForeground(lipgloss.Color("#A78BFA"))
 	}
 
 	form := lipgloss.JoinVertical(
@@ -503,16 +517,16 @@ func renderSignupPage(m Model) string {
 	confirmPasswordStyle := inputBoxStyle
 
 	if m.Focused == 0 {
-		userNameStyle = inputBoxStyle.BorderForeground(lipgloss.Color("#FF9F1C"))
+		userNameStyle = inputBoxStyle.BorderForeground(lipgloss.Color("#A78BFA"))
 	}
 	if m.Focused == 1 {
-		emailStyle = inputBoxStyle.BorderForeground(lipgloss.Color("#FF9F1C"))
+		emailStyle = inputBoxStyle.BorderForeground(lipgloss.Color("#A78BFA"))
 	}
 	if m.Focused == 2 {
-		passwordStyle = inputBoxStyle.BorderForeground(lipgloss.Color("#FF9F1C"))
+		passwordStyle = inputBoxStyle.BorderForeground(lipgloss.Color("#A78BFA"))
 	}
 	if m.Focused == 3 {
-		confirmPasswordStyle = inputBoxStyle.BorderForeground(lipgloss.Color("#FF9F1C"))
+		confirmPasswordStyle = inputBoxStyle.BorderForeground(lipgloss.Color("#A78BFA"))
 	}
 
 	form := lipgloss.JoinVertical(
@@ -539,13 +553,13 @@ func renderSignupPage(m Model) string {
 		m.height,
 		lipgloss.Center,
 		lipgloss.Center,
-		form,
+		bgStyle.Render(form),
 	)
 }
 
 func renderWelcomeMsg(m Model) string {
 
-	style := lipgloss.NewStyle().Foreground(lipgloss.Color("#8C92AC")).PaddingTop(1).PaddingBottom(2)
+	style := lipgloss.NewStyle().Foreground(lipgloss.Color("#5EEAD4")).PaddingTop(1).PaddingBottom(2)
 	welcomeMsg := style.Render(fmt.Sprintf("Welcome, %s", m.user.Username))
 
 	centeredWelcomeMsg := lipgloss.Place(
