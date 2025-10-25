@@ -606,9 +606,8 @@ func renderWelcomeMsg(m Model) string {
 }
 
 func renderJournal(m Model) string {
-	title := titleStyle.Render("📜 " + m.user.Username)
 	currentTime := m.currentTime.Format("2006/01/02 15:04:05")
-	clock := lipgloss.NewStyle().Render("🕰️ " + currentTime)
+	clock := lipgloss.NewStyle().Render("🕰️ " + currentTime + "\n")
 
 	// Center the title and clock on the same line
 	header := lipgloss.Place(
@@ -616,7 +615,7 @@ func renderJournal(m Model) string {
 		1,
 		lipgloss.Center,
 		lipgloss.Center,
-		lipgloss.JoinHorizontal(lipgloss.Center, title, "   ", clock),
+		clock,
 	)
 
 	// Center the instructions
