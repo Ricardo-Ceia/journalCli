@@ -23,23 +23,22 @@ var (
 	// Titles and section headers
 	titleStyle = lipgloss.NewStyle().
 			Bold(true).
-			Foreground(lipgloss.Color("#6C63FF")). // indigo
+			Foreground(lipgloss.Color("#ba8f95")). // indigo
 			PaddingBottom(1)
 
 	// Input boxes
 	inputBoxStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("#5EEAD4")). // cyan border
-			Padding(0, 1).
+			BorderForeground(lipgloss.Color("#897c80")). // cyan border
 			Width(30)
 
 	// Buttons
 	buttonStyle = lipgloss.NewStyle().
 			Bold(true).
 			Foreground(lipgloss.Color("#0D0D1A")). // dark text
-			Background(lipgloss.Color("#6C63FF")). // indigo background
-			Padding(0, 2).
-			MarginTop(1)
+			Background(lipgloss.Color("#CFBCDF")).
+			Margin(1).
+			Align(lipgloss.Center)
 
 	// Error messages
 	errorStyle = lipgloss.NewStyle().
@@ -494,14 +493,14 @@ func renderGoogleLogo() string {
 
 func renderLoginPage(m Model) string {
 	title := titleStyle.Render("🔐 Login")
-	userNameStyle := inputBoxStyle
+	userEmailStyle := inputBoxStyle
 	passwordStyle := inputBoxStyle
 	googleLoginLink := lipgloss.NewStyle().Italic(true).Underline(true).Render("Press Ctrl+g to Login with")
 	googleLogo := renderGoogleLogo()
-	baseFooter := lipgloss.NewStyle().Italic(true).Bold(true).Render("\nFirst time? ")
+	baseFooter := lipgloss.NewStyle().Italic(true).Bold(true).PaddingTop(1).Render("First time? ")
 	underlineFooter := lipgloss.NewStyle().Italic(true).Underline(true).Render("Press Ctrl+s to go to SignUp Page")
 	if m.Focused == 0 {
-		userNameStyle = inputBoxStyle.BorderForeground(lipgloss.Color("#A78BFA"))
+		userEmailStyle = inputBoxStyle.BorderForeground(lipgloss.Color("#A78BFA"))
 	}
 	if m.Focused == 1 {
 		passwordStyle = inputBoxStyle.BorderForeground(lipgloss.Color("#A78BFA"))
@@ -510,10 +509,11 @@ func renderLoginPage(m Model) string {
 	form := lipgloss.JoinVertical(
 		lipgloss.Center,
 		title,
-		userNameStyle.Render(m.username.View()),
+		userEmailStyle.Render(m.email.View()),
 		passwordStyle.Render(m.password.View()),
-		googleLoginLink+" "+googleLogo,
 		buttonStyle.Render("Press Enter to Submit"),
+		" ",
+		googleLoginLink+" "+googleLogo,
 		baseFooter+underlineFooter,
 	)
 
@@ -538,7 +538,7 @@ func renderSignupPage(m Model) string {
 	title := titleStyle.Render("🔐 SignUp")
 	googleSignupLink := lipgloss.NewStyle().Italic(true).Underline(true).Render("Press Ctrl+g to SignUp with Google")
 	googleLogo := renderGoogleLogo()
-	baseFooter := lipgloss.NewStyle().Italic(true).Bold(true).Render("\nAlready have an account? ")
+	baseFooter := lipgloss.NewStyle().Italic(true).Bold(true).Render("Already have an account? ")
 	underlineFooter := lipgloss.NewStyle().Italic(true).Underline(true).Render("Press Ctrl+l to go to Login Page")
 
 	userNameStyle := inputBoxStyle
@@ -566,8 +566,9 @@ func renderSignupPage(m Model) string {
 		emailStyle.Render(m.email.View()),
 		passwordStyle.Render(m.password.View()),
 		confirmPasswordStyle.Render(m.confirmPassword.View()),
-		googleSignupLink+" "+googleLogo,
 		buttonStyle.Render("Press Enter to Submit"),
+		googleSignupLink+" "+googleLogo,
+		"",
 		baseFooter+underlineFooter,
 	)
 
@@ -607,9 +608,8 @@ func renderWelcomeMsg(m Model) string {
 
 func renderJournal(m Model) string {
 	currentTime := m.currentTime.Format("2006/01/02 15:04:05")
-	clock := lipgloss.NewStyle().Render("🕰️ " + currentTime + "\n")
+	clock := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("#E0AfA0")).Render("🕰️ " + currentTime)
 
-	// Center the title and clock on the same line
 	header := lipgloss.Place(
 		m.width,
 		1,
@@ -618,11 +618,10 @@ func renderJournal(m Model) string {
 		clock,
 	)
 
-	// Center the instructions
 	instructions := lipgloss.NewStyle().
 		Italic(true).
 		Foreground(lipgloss.Color("#A78BFA")).
-		Render("Ctrl+S to Save | Esc to Back | Ctrl+C to Quit")
+		Render("\nCtrl+S to Save | Esc to Back | Ctrl+C to Quit")
 
 	centeredInstructions := lipgloss.Place(
 		m.width,
@@ -632,19 +631,16 @@ func renderJournal(m Model) string {
 		instructions,
 	)
 
-	lineNumber := lipgloss.NewStyle().Render(fmt.Sprintf("%d", m.journal.Length()))
-
-	// Set textarea dimensions
 	m.journal.SetWidth(m.width)
 	m.journal.SetHeight(m.height - 6)
-	// Join header (centered) with content (left-aligned)
+
 	content := lipgloss.JoinVertical(
 		lipgloss.Left,
 		header,
 		centeredInstructions,
 		"",
 		"",
-		lineNumber+m.journal.View(),
+		m.journal.View(),
 	)
 
 	if m.err != nil {
