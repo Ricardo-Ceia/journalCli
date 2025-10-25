@@ -632,10 +632,11 @@ func renderJournal(m Model) string {
 		instructions,
 	)
 
+	lineNumber := lipgloss.NewStyle().Render(fmt.Sprintf("%d", m.journal.Length()))
+
 	// Set textarea dimensions
 	m.journal.SetWidth(m.width)
 	m.journal.SetHeight(m.height - 6)
-
 	// Join header (centered) with content (left-aligned)
 	content := lipgloss.JoinVertical(
 		lipgloss.Left,
@@ -643,7 +644,7 @@ func renderJournal(m Model) string {
 		centeredInstructions,
 		"",
 		"",
-		m.journal.View(),
+		lineNumber+m.journal.View(),
 	)
 
 	if m.err != nil {
