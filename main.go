@@ -48,6 +48,8 @@ var (
 
 type Page int
 
+type tickMsg time.Time
+
 type Model struct {
 	page            Page
 	msg             string
@@ -60,6 +62,7 @@ type Model struct {
 	email           textinput.Model
 	confirmPassword textinput.Model
 	journal         textarea.Model
+	currentTime     time.Time
 	Focused         int
 	width           int
 	height          int
@@ -135,14 +138,16 @@ func initialModel() Model {
 	journal := textarea.New()
 	journal.Placeholder = "Write your thoughts here..."
 	journal.ShowLineNumbers = true
+	journal.CharLimit = -1
 
 	journal.FocusedStyle = textarea.Style{
-		Base: lipgloss.NewStyle().Foreground(lipgloss.Color("#6C63FF")),
+		Base: lipgloss.NewStyle(),
 	}
 
 	journal.BlurredStyle = textarea.Style{
-		Base: lipgloss.NewStyle().Foreground(lipgloss.Color("#E6E6E6")),
+		Base: lipgloss.NewStyle(),
 	}
+
 	return Model{
 		page:            PageLogin,
 		journal:         journal,
@@ -152,14 +157,21 @@ func initialModel() Model {
 		password:        password,
 		confirmPassword: confirmPassword,
 		inputing:        true,
+		currentTime:     time.Now(),
 		Client: &http.Client{
 			Timeout: time.Second * 10,
 		},
 	}
 }
 
+func tickEverySecond() tea.Cmd {
+	return tea.Tick(time.Second, func(t time.Time) tea.Msg {
+		return tickMsg(t)
+	})
+}
+
 func (m Model) Init() tea.Cmd {
-	return nil
+	return tickEverySecond()
 }
 
 func checkServerLogin(email, password string, client *http.Client) tea.Msg {
@@ -281,6 +293,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 
+	case tickMsg:
+		m.currentTime = time.Time(msg)
+		return m, tickEverySecond()
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -416,6 +431,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case tea.KeyEsc:
 				m.page = PageMenu
 				m.journal.SetValue("")
+				m.journal.Blur()
+				m.inputing = false
 			case tea.KeyCtrlC:
 				return m, tea.Quit
 			}
@@ -590,32 +607,55 @@ func renderWelcomeMsg(m Model) string {
 
 func renderJournal(m Model) string {
 	title := titleStyle.Render("📜 " + m.user.Username)
-	instructions := lipgloss.NewStyle().Italic(true).Foreground(lipgloss.Color("#A78BFA")).Render("Ctrl+S to Save | Esc to Back | Ctrl+C to Quit")
+	currentTime := m.currentTime.Format("2006/01/02 15:04:05")
+	clock := lipgloss.NewStyle().Render("🕰️ " + currentTime)
 
-	journalBox := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("#6C63FF")).Padding(1).Render(m.journal.View())
+	// Center the title and clock on the same line
+	header := lipgloss.Place(
+		m.width,
+		1,
+		lipgloss.Center,
+		lipgloss.Center,
+		lipgloss.JoinHorizontal(lipgloss.Center, title, "   ", clock),
+	)
 
-	form := lipgloss.JoinVertical(
-		lipgloss.Left,
-		title,
+	// Center the instructions
+	instructions := lipgloss.NewStyle().
+		Italic(true).
+		Foreground(lipgloss.Color("#A78BFA")).
+		Render("Ctrl+S to Save | Esc to Back | Ctrl+C to Quit")
+
+	centeredInstructions := lipgloss.Place(
+		m.width,
+		1,
+		lipgloss.Center,
+		lipgloss.Center,
 		instructions,
-		journalBox,
+	)
+
+	// Set textarea dimensions
+	m.journal.SetWidth(m.width)
+	m.journal.SetHeight(m.height - 6)
+
+	// Join header (centered) with content (left-aligned)
+	content := lipgloss.JoinVertical(
+		lipgloss.Left,
+		header,
+		centeredInstructions,
+		"",
+		"",
+		m.journal.View(),
 	)
 
 	if m.err != nil {
-		form = lipgloss.JoinVertical(
+		content = lipgloss.JoinVertical(
 			lipgloss.Left,
-			form,
+			content,
 			errorStyle.Render(fmt.Sprintf("Error: %v", m.err)),
 		)
 	}
 
-	return lipgloss.Place(
-		m.width,
-		m.height,
-		lipgloss.Center,
-		lipgloss.Center,
-		form,
-	)
+	return content
 }
 
 var debugFile *os.File
